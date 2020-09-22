@@ -3,7 +3,7 @@ require 'mini_magick'
 module Mapstatic
 
   class Map
-    TILE_SIZE = 256
+    DEFAULT_TILE_SIZE = 256
 
     attr_reader :zoom, :lat, :lng, :width, :height
     attr_accessor :tile_source
@@ -19,19 +19,20 @@ module Mapstatic
       end
       @zoom = params.fetch(:zoom).to_i
       @tile_source = TileSource.new(params[:provider])
+      @tile_size = params.fetch(:tile_size, DEFAULT_TILE_SIZE)
     end
 
     def width
       @width ||= begin
         left, bottom, right, top = bounding_box_in_tiles
-        (right - left) * TILE_SIZE
+        (right - left) * @tile_size
       end
     end
 
     def height
       @height ||= begin
         left, bottom, right, top = bounding_box_in_tiles
-        (bottom - top) * TILE_SIZE
+        (bottom - top) * @tile_size
       end
     end
 
@@ -67,11 +68,11 @@ module Mapstatic
     end
 
     def width_tile_space
-      width / TILE_SIZE
+      width / @tile_size
     end
 
     def height_tile_space
-      height / TILE_SIZE
+      height / @tile_size
     end
 
     def bounding_box
@@ -118,8 +119,8 @@ module Mapstatic
     end
 
     def crop_to_size(image)
-      distance_from_left = (bounding_box_in_tiles[0] - required_x_tiles[0]) * TILE_SIZE
-      distance_from_top  = (bounding_box_in_tiles[3] - required_y_tiles[0]) * TILE_SIZE
+      distance_from_left = (bounding_box_in_tiles[0] - required_x_tiles[0]) * @tile_size
+      distance_from_top  = (bounding_box_in_tiles[3] - required_y_tiles[0]) * @tile_size
 
       image.crop "#{width}x#{height}+#{distance_from_left}+#{distance_from_top}"
     end
@@ -127,8 +128,8 @@ module Mapstatic
     def create_uncropped_image
       image = MiniMagick::Image.read(map_tiles[0])
 
-      uncropped_width  = required_x_tiles.length * TILE_SIZE
-      uncropped_height = required_y_tiles.length * TILE_SIZE
+      uncropped_width  = required_x_tiles.length * @tile_size
+      uncropped_height = required_y_tiles.length * @tile_size
 
       image.combine_options do |c|
         c.background 'none'
@@ -146,7 +147,7 @@ module Mapstatic
 
         map_tiles.slice(start, length).each_with_index do |tile, column|
           image = image.composite( MiniMagick::Image.read(tile) ) do |c|
-            c.geometry "+#{ (column) * TILE_SIZE }+#{ (row) * TILE_SIZE }"
+            c.geometry "+#{ (column) * @tile_size }+#{ (row) * @tile_size }"
           end
         end
 
